@@ -1,0 +1,38 @@
+{
+    "model": {
+        "num_classes": 1000,
+        "dim": 32,
+        "depth": 7,
+        "n_head": 8,
+        "pos_dim": 32,
+        "move_avg": 0.999,
+        "center_avg": 0.9,
+        "teacher_temp": 0.06
+    },
+    "data": {
+        "class": "cell_classification",
+        "path": "/mnt/data/aim/liyaxuan/projects/project2/BBP/",
+        "n_nodes": 200,
+        "feat_dim": 3,
+        "batch_size": 32,
+        "num_workers": 6,
+        "jitter_var": 1,
+        "translate_var": 10,
+        "rotation_axis": "y",
+        "n_drop_branch": 10
+    },
+    "optimizer": {
+        "classifier_lr": 0.01,
+        "backbone_lr": 1e-4,
+        "max_iter": 400000,
+        "exp_decay": 0.5
+    },
+    "trainer": {
+        "ckpt_dir": "/mnt/data/aim/liyaxuan/projects/project2/codebase/cell_classification_ckpts/",
+        "save_ckpt_every": 50,
+        "seed": null
+    },
+    "logging":{
+        "path": "/mnt/data/aim/liyaxuan/projects/project2/codebase/cell_classification_logs/"
+    }
+}

@@ -1,0 +1,48 @@
+rm -rf /home/pai/envs
+ln -s /mnt/data/aim/liyaxuan/.conda/envs /home/pai/envs
+source ~/.bashrc
+
+sudo apt install screen
+
+cp /mnt/data/aim/liyaxuan/checkpoint_liberty_with_aug.pth /root/.cache/torch/hub/checkpoints
+
+ps -ef |grep hello |awk '{print $2}'|xargs kill -9
+
+lsof /dev/nvidia* | awk '{print $2}' | uniq | tail -n +2 | xargs -I{} sudo kill -9 {}
+
+ps | grep [0-9]
+
+ps | grep [0-9] | cut -d"p" -f1 | xargs kill -9
+
+ps -ef | grep [0-9] | cut -d" " -f2 | xargs kill -9
+
+lsof /mnt/data/aim/liyaxuan/dataset/MESS/datasets/FloodNet-Supervised_v1.0/.nfs00000000273d616e00000107
+
+cd /mnt/data/aim/liyaxuan/codebase
+pip install -e .
+pip install taming-transformers-rom1504
+mkdir /root/.cache
+mkdir /root/.cache/torch
+mkdir /root/.cache/torch/hub
+mkdir /root/.cache/torch/hub/checkpoints
+cp /mnt/data/aim/liyaxuan/checkpoint_liberty_with_aug.pth /root/.cache/torch/hub/checkpoints
+cd /mnt/data/aim/liyaxuan/codebase/CLIP-main
+pip install -e .
+python  /mnt/data/aim/liyaxuan/codebase/main.py \
+    --base  /mnt/data/aim/liyaxuan/codebase/configs/latent-diffusion/morph_KL8.yaml \
+    -t \
+    -- resume  /mnt/data/aim/liyaxuan/codebase/logs/2023-07-31T10-57-58_morph_KL8 \
+    --gpu 0,1,2,3,4,5,6,7
+
+
+mkdir /root/.cache/torch
+mkdir /root/.cache/torch/hub
+mkdir /root/.cache/torch/hub/checkpoints
+cp /mnt/data/aim/liyaxuan/checkpoint_liberty_with_aug.pth /root/.cache/torch/hub/checkpoints
+
+apt-get update && apt-get install curl git-lfs -y
+apt-get -y install build-essential nghttp2 libnghttp2-dev libssl-dev
+pip3 install -U torch torchvision torchaudio torchtext pytorch-lightning transformers xformers deepspeed -f https://download.pytorch.org/whl/cu113/torch_stable.html --user
+pip3 install transformers --force-reinstall --user --upgrade
+pip3 install sentencepiece datasets
+git lfs install
