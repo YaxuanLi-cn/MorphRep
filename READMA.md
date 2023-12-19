@@ -35,4 +35,4 @@ train.dataset_path=NeuronMorpho:split=TRAIN:root=/mnt/data/aim/liyaxuan/projects
 
 # Test
 
- - `KNN_classifier.py`:     
+ - `KNN_classifier.py`: use unsupervised classification method ——KNN
