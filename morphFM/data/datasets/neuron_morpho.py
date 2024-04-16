@@ -31,7 +31,7 @@ _Target = int
 nowdate = datetime.datetime.now().strftime("%Y-%m-%dT%H-%M-%S")
 logger_bug = logging.getLogger('morphFM_bug')
 logger_bug.setLevel(logging.DEBUG)
-file_log = logging.FileHandler('/mnt/data/aim/liyaxuan/projects/project2/idx_in_training/' + nowdate,'a',encoding='utf-8')
+file_log = logging.FileHandler('/mnt/data/aim/liyaxuan/git_project2/idx_in_training/' + nowdate,'a',encoding='utf-8')
 file_log.setLevel(logging.DEBUG)
 formatter = logging.Formatter('%(asctime)s - %(filename)s - %(message)s ')
 file_log.setFormatter(formatter)
@@ -205,13 +205,13 @@ class NeuronMorpho(Dataset):
 
         self._split = split
         self.n_local_crop = n_local_crop
-
+        self.save_cnt = 0
         self.mode = mode
         self.inference = inference
 
         if data_path == None:
             data_path = cfg.dataset.path
-
+        
         # Augmentation parameters.
         self.jitter_var = cfg.dataset.jitter_var
         self.rotation_axis = cfg.dataset.rotation_axis
@@ -222,103 +222,158 @@ class NeuronMorpho(Dataset):
 
         self.local_crop_nodes = cfg.crops.local_crops_size
 
-        cell_ids = list(np.load(Path(data_path, f'{mode}_ids.npy')))
+        self.cells = []
+        self.count = [0 for i in range(3)]
+        self.data_path = data_path
 
+        cell_cnt = 0
+
+        if False:
+            
+            cell_ids = list(np.load(Path(data_path, f'{mode}_ids.npy')))
+            self.manager = []
+            
+            for i in range(3):
+                self.manager.append(Manager())
+                self.cells.append(self.manager[i].dict())
+
+            bug_cell = [136342, 110312, 136547, 110325]
+
+            #if mode == 'all':
+            #    cell_ids = [cell_ids[i] for i in range(100)]
+
+            for cell_id in tqdm(cell_ids):
+
+                if cell_id in bug_cell:
+                    continue
+
+                soma_id = 0
+
+                features = np.load(Path(data_path, 'skeletons', str(cell_id), 'features.npy'))
+                
+                with open(Path(data_path, 'skeletons', str(cell_id), 'neighbors.pkl'), 'rb') as f:
+                    neighbors = pickle.load(f)
+
+                assert len(features) == len(neighbors)
+
+                keep_node = -1
+                cell_type = 2
+
+                for i in range(3):
+                    if len(features) >= self.n_nodes[i]:
+                        keep_node = self.n_nodes[i]
+                        cell_type = i
+
+                if self.inference:
+                    cell_type = 2
+                    keep_node = self.n_nodes[2]
+
+                if keep_node == -1:
+                    print('node:', len(features))
+                    continue
+
+                # Subsample graphs for faster processing during training.
+                neighbors, not_deleted = subsample_graph(neighbors=neighbors, 
+                                                            not_deleted=set(range(len(neighbors))), 
+                                                            keep_nodes=keep_node, 
+                                                            protected=[soma_id])
+
+                # Remap neighbor indices to 0..999.
+                neighbors, subsampled2new = remap_neighbors(neighbors)
+                soma_id = subsampled2new[soma_id]
+
+                # Accumulate features of subsampled nodes.
+                features = features[list(subsampled2new.keys()), :]
+
+                leaf_branch_nodes = get_leaf_branch_nodes(neighbors)
+                
+                # Using the distances we can infer the direction of an edge.
+                distances = compute_node_distances(soma_id, neighbors)
+
+                item = {
+                    'cell_id': cell_id,
+                    'features': features, 
+                    'neighbors': neighbors,
+                    'distances': distances,
+                    'soma_id': soma_id,
+                    'leaf_branch_nodes': leaf_branch_nodes,
+                    'type': cell_type,
+                }
+
+                not_connect = 0
+                for key in neighbors:
+                    for to in neighbors[key]:
+                        if to not in distances.keys():
+                            not_connect = 1
+                            break
+                    if not_connect == 1:
+                        break
+                
+                if not_connect == 1:
+                    print('not_connect')
+                    continue
+
+                #print('now_cellid:', cell_id)
+                
+                self.cells[cell_type][self.count[cell_type]] = item
+                
+                self.count[cell_type] += 1
+
+                cell_cnt += 1
+
+                if cell_cnt % 20000 == 0:
+                    self.save_processed_data()
+
+            self.save_processed_data()
+            with open(Path(data_path, 'processed_data/save_data_num.pkl'), 'wb') as f:
+                pickle.dump((self.count, self.save_cnt), f)
+        
+        self.open_saved_data()
+
+        self.num_samples = self.count[0] + self.count[1] + self.count[2]
+        print('num_samples:', self.num_samples, self.count[0], self.count[1], self.count[2])
+    
+    def save_processed_data(self):
+
+        normal_cells = [dict(cell) for cell in self.cells] 
+
+        while(True):
+
+            with open(Path(self.data_path, 'processed_data/processed_data' + str(self.save_cnt) + '.pkl'), 'wb') as f:
+                pickle.dump(normal_cells, f)
+
+            try:
+                with open(Path(self.data_path, 'processed_data/processed_data' + str(self.save_cnt) + '.pkl'), 'rb') as file:
+                    data1 = pickle.load(file)
+                break
+            except Exception as e:
+                print('Error loading pickle file:', e)
+                os.remove(Path(self.data_path, 'processed_data/processed_data' + str(self.save_cnt) + '.pkl'))
+                continue
+
+        self.save_cnt += 1
+
+        for i in range(3):
+            self.cells[i].clear()
+
+    def open_saved_data(self):
+       
         self.manager = []
         self.cells = []
-
         for i in range(3):
             self.manager.append(Manager())
             self.cells.append(self.manager[i].dict())
 
-        bug_cell = [136342, 110312, 136547, 110325]
+        with open(Path(self.data_path, 'processed_data/save_data_num.pkl'), 'rb') as f:
+            self.count, self.save_cnt = pickle.load(f)
 
-        self.count = [0 for i in range(3)]
-
-        #if mode == 'all':
-        #    cell_ids = [cell_ids[i] for i in range(100)]
-
-        for cell_id in tqdm(cell_ids):
-
-            if cell_id in bug_cell:
-                continue
-
-            soma_id = 0
-
-            features = np.load(Path(data_path, 'skeletons', str(cell_id), 'features.npy'))
-            
-            with open(Path(data_path, 'skeletons', str(cell_id), 'neighbors.pkl'), 'rb') as f:
-                neighbors = pickle.load(f)
-
-            assert len(features) == len(neighbors)
-
-            keep_node = -1
-            cell_type = 2
-
-            for i in range(3):
-                if len(features) >= self.n_nodes[i]:
-                    keep_node = self.n_nodes[i]
-                    cell_type = i
-
-            if self.inference:
-                cell_type = 2
-                keep_node = self.n_nodes[2]
-
-            if keep_node == -1:
-                print('node:', len(features))
-                continue
-
-            # Subsample graphs for faster processing during training.
-            neighbors, not_deleted = subsample_graph(neighbors=neighbors, 
-                                                        not_deleted=set(range(len(neighbors))), 
-                                                        keep_nodes=keep_node, 
-                                                        protected=[soma_id])
-
-            # Remap neighbor indices to 0..999.
-            neighbors, subsampled2new = remap_neighbors(neighbors)
-            soma_id = subsampled2new[soma_id]
-
-            # Accumulate features of subsampled nodes.
-            features = features[list(subsampled2new.keys()), :]
-
-            leaf_branch_nodes = get_leaf_branch_nodes(neighbors)
-            
-            # Using the distances we can infer the direction of an edge.
-            distances = compute_node_distances(soma_id, neighbors)
-
-            item = {
-                'cell_id': cell_id,
-                'features': features, 
-                'neighbors': neighbors,
-                'distances': distances,
-                'soma_id': soma_id,
-                'leaf_branch_nodes': leaf_branch_nodes,
-                'type': cell_type,
-            }
-
-            not_connect = 0
-            for key in neighbors:
-                for to in neighbors[key]:
-                    if to not in distances.keys():
-                        not_connect = 1
-                        break
-                if not_connect == 1:
-                    break
-            
-            if not_connect == 1:
-                print('not_connect')
-                continue
-
-            #print('now_cellid:', cell_id)
-            
-            self.cells[cell_type][self.count[cell_type]] = item
-            
-            self.count[cell_type] += 1
-
-        print('count:',self.count)
-
-        self.num_samples = self.count[0] + self.count[1] + self.count[2]
-        print('num_samples:', self.num_samples, self.count[0], self.count[1], self.count[2])
+        for i in range(self.save_cnt):
+            print('i:', i)
+            with open(Path(self.data_path, 'processed_data/processed_data' + str(i) + '.pkl'), 'rb') as f:
+                normal_cells = pickle.load(f)
+            for j in range(3):
+                self.cells[j].update(normal_cells[j])
+        
 
     def split(self) -> "NeuronMorpho.Split":
         return self._split
@@ -419,7 +474,7 @@ class NeuronMorpho(Dataset):
         new_features = new_features[not_deleted].copy()
 
         return new_features, adj_matrix
-
+    
     def _augment(self, cell):
 
         features = cell['features']

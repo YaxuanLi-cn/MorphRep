@@ -67,7 +67,7 @@ train:
   saveckp_freq: 20
   seed: 0
   num_workers: 10
-  OFFICIAL_EPOCH_LENGTH: 1294
+  OFFICIAL_EPOCH_LENGTH: 2324
   cache_dataset: true
   centering: "centering" # or "sinkhorn_knopp"
 student:
@@ -105,10 +105,16 @@ optim:
   adamw_beta2: 0.999
 crops:
   local_crops_number: 4
-  global_crops_size: 1000
-  local_crops_size: 200
+  global_crops_size: 
+  - 200
+  - 500
+  - 1000
+  local_crops_size: 
+  - 40
+  - 100
+  - 200
 evaluation:
-  eval_period_iterations: 1294
+  eval_period_iterations: 2324
 dataset:
   path: "/mnt/data/aim/liyaxuan/pre_data/"
   jitter_var: 1

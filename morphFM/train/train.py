@@ -410,11 +410,11 @@ def save_checkpoint(cfg, model, loss, iteration):
 
 def do_knn(knn_dataset, cfg, root_dir, model, iteration, logger_1):
 
-    dir_name = '/mnt/data/aim/liyaxuan/projects/project2/benchmark_datasets/'
+    dir_name = '/mnt/data/aim/liyaxuan/projects/git_project2/benchmark_datasets/'
     
     with os.scandir(dir_name) as entries:
         all_dataset_names = [entry.name for entry in entries if entry.is_dir()]
-    #all_dataset_names = ['M1_EXC_cell_type_processed']
+        
     sum_acc = 0.0
 
     for i, dataset_name in enumerate(all_dataset_names):
@@ -473,26 +473,31 @@ def do_train(cfg, model, resume=False):
     nowdate = datetime.datetime.now().strftime("%Y-%m-%dT%H-%M-%S")
     logger_1 = logging.getLogger('class_logger')
     logger_1.setLevel(logging.DEBUG)
-    file_log = logging.FileHandler('/mnt/data/aim/liyaxuan/projects/project2/test_in_training/' + nowdate,'a',encoding='utf-8')
+
+    file_log = logging.FileHandler('/mnt/data/aim/liyaxuan/git_project2/test_in_training/' + nowdate,'a',encoding='utf-8')
     file_log.setLevel(logging.DEBUG)
+
     formatter = logging.Formatter('%(asctime)s - %(filename)s - %(message)s ')
+
     file_log.setFormatter(formatter)
     logger_1.handlers.clear()
     logger_1.addHandler(file_log)
     logger_1.propagate = False
     
-    dir_name = '/mnt/data/aim/liyaxuan/projects/project2/benchmark_datasets/'
+    dir_name = '/mnt/data/aim/liyaxuan/git_project2/benchmark_datasets/'
 
     with os.scandir(dir_name) as entries:
         all_dataset_names = [entry.name for entry in entries if entry.is_dir()]
     #all_dataset_names = ['M1_EXC_cell_type_processed']
 
+    '''
     knn_dataset = {}
     
     for i, dataset_name in enumerate(all_dataset_names):
         dataset_path = dir_name + dataset_name + '/'
         knn_dataset[i * 2] = NeuronMorpho(cfg=cfg, root='', extra='', keep_node=cfg.dataset.node_num, split=NeuronMorpho.Split['TRAIN'], mode='train', inference=True, data_path = dataset_path)
         knn_dataset[i * 2 + 1] = NeuronMorpho(cfg=cfg, root='', extra='', keep_node=cfg.dataset.node_num, split=NeuronMorpho.Split['TRAIN'],mode='val', inference=True, data_path = dataset_path)
+    '''
     
     node_num = cfg.crops.global_crops_size
 

@@ -7,7 +7,6 @@ import numpy as np
 from tqdm import *
 import os
 import time
-from pre_process import get_embedding
 import csv
 from enum import Enum
 import logging
@@ -41,8 +40,8 @@ import math
 from sklearn.neighbors import KNeighborsClassifier
 
 all_dataset = ['allen_cell_type_processed', 'allen_region_processed', 'BBP_cell_type_processed', 'BIL_cell_type_processed', 'M1_EXC_cell_type_processed', 'M1_EXC_region_processed']
-#all_dataset = ['M1_EXC_region_processed']
-root_dir = '/mnt/data/aim/liyaxuan/projects/git_project2/benchmark_dataset/'
+#all_dataset = ['allen_cell_type_processed']
+root_dir = '/mnt/data/aim/liyaxuan/projects/git_project2/benchmark_datasets/'
 #checkpoint_path = '/mnt/data/aim/liyaxuan/projects/git_project2/ours_checkpoint.pth'
 checkpoint_path = '/mnt/data/aim/liyaxuan/projects/git_project2/60423_student_checkpoint.pth'
 
@@ -113,6 +112,39 @@ def build_model(cfg):
     backbonemodel.student.load_state_dict(student_state_dict["student"])
 
     return backbonemodel
+
+def get_embedding(now_dir, model, cfg):
+
+    all_embedding = []
+    all_labels = []
+
+    with open(now_dir + 'processed/processed_data.json', 'r') as f:
+        all_data = json.load(f)
+    
+    all_keys = all_data.keys()
+
+    for key in tqdm(all_keys):
+        
+        now_data = all_data[key]
+        adj = torch.tensor(np.array(now_data['adj'])).half().cuda()
+        lapl = torch.tensor(np.array(now_data['lapl'])).float().cuda()
+        feat = torch.from_numpy(np.array(now_data['feat'])).half().cuda()
+
+
+        embedding = model.student.backbone(feat, adj, lapl)["x_norm_clstoken"].detach()
+
+        for embed in embedding[0]:
+            assert not math.isnan(embed.item())
+
+        all_embedding.append(embedding.cpu().numpy())  
+        all_labels.append(now_data['label'])
+
+        del feat, adj, lapl, embedding 
+        torch.cuda.empty_cache()  
+
+    return all_embedding, all_labels
+
+
 
 def run(now_dataset, cfg):
 

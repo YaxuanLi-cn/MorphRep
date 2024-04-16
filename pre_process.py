@@ -19,6 +19,46 @@ import time
 import torch
 import math
 import json
+from pathlib import Path
+import pickle
+import pandas as pd
+import networkx as nx
+from allensdk.core import swc
+import numpy as np
+from tqdm import *
+import os
+import time
+import csv
+from enum import Enum
+import logging
+from typing import Callable, List, Optional, Tuple, Union
+import pickle
+import numpy as np
+from pathlib import Path
+from torch.multiprocessing import Manager
+from torch.utils.data import Dataset, DataLoader
+import torch
+from torch import nn
+from morphFM.data.datasets.utils import neighbors_to_adjacency, subsample_graph, rotate_graph, jitter_node_pos, translate_soma_pos, get_leaf_branch_nodes, compute_node_distances, drop_random_branch, remap_neighbors, neighbors_to_adjacency_torch
+from morphFM.data.datasets.data_utils import connect_graph, remove_axon, rotate_cell
+import copy
+import json
+import seaborn as sns
+from sklearn.manifold import TSNE
+from morphFM.data.datasets.neuron_morpho import NeuronMorpho
+from morphFM.train.utils_graph import plot_neuron, plot_tsne, neighbors_to_adjacency_torch, compute_eig_lapl_torch_batch
+from morphFM.models import build_model_from_cfg
+from morphFM.utils.config import setup
+from morphFM.train.train import get_args_parser,build_optimizer,build_schedulers
+from morphFM.train.ssl_meta_arch import SSLMetaArch
+import os
+from morphFM.fsdp import FSDPCheckpointer
+from morphFM.models.graphdino import GraphTransformer
+import torch.optim as optim
+from torch.utils.data import random_split
+import datetime
+import math
+from sklearn.neighbors import KNeighborsClassifier
 
 def remove_axon(neighbors, features, adj_matrix, soma_id):
     
@@ -61,14 +101,17 @@ def remove_axon(neighbors, features, adj_matrix, soma_id):
 
     return neighbors, features, soma_id
     
-def get_embedding(now_dir, model, cfg):
+def run(now_dir, cfg):
+
+    if not os.path.exists(now_dir + 'processed'):
+        os.makedirs(now_dir + 'processed')
 
     with os.scandir(now_dir) as entries:
         all_no = [entry.name[:] for entry in entries if entry.name[-4:]=='.swc' or entry.name[-4:]=='.SWC']
 
     cell_allids = []
-    all_embedding = []
-    all_labels = []
+    all_data = {}
+
     keep_node = cfg.crops.global_crops_size
 
     filename_to_phenotype = json.load(open(now_dir + 'label/filename_to_phenotype.json'))
@@ -194,19 +237,39 @@ def get_embedding(now_dir, model, cfg):
         lapl = compute_eig_lapl_torch_batch(adj, pos_enc_dim=cfg.model.pos_dim).float().cuda()
         feat = torch.from_numpy(feat).half().cuda()[None, ]
 
-        embedding = model.student.backbone(feat, adj, lapl)["x_norm_clstoken"].detach()
-        for embed in embedding[0]:
-            assert not math.isnan(embed.item())
-
-        all_embedding.append(embedding.cpu().numpy())  
-
         if now_swc not in filename_to_phenotype.keys():
             continue
-            
-        all_labels.append(phenotype_to_label[filename_to_phenotype[now_swc]])
 
-        del feat, adj, lapl, embedding 
-        torch.cuda.empty_cache()  
+        now_data = {}
+        now_data['adj'] = adj.cpu().numpy().tolist()
+        now_data['lapl'] = lapl.cpu().numpy().tolist()
+        now_data['feat'] = feat.cpu().numpy().tolist()
+        now_data['label'] = phenotype_to_label[filename_to_phenotype[now_swc]]
 
-    return all_embedding, all_labels
+        all_data[str(i)] = now_data
+
+    with open(now_dir + 'processed/processed_data.json', 'w') as f:
+        json.dump(all_data, f)
+
+
+all_dataset = ['allen_cell_type_processed', 'allen_region_processed', 'BBP_cell_type_processed', 'BIL_cell_type_processed', 'M1_EXC_cell_type_processed', 'M1_EXC_region_processed']
+root_dir = '/mnt/data/aim/liyaxuan/git_project2/benchmark_datasets/'
+
+args = get_args_parser(add_help=True).parse_args()
+args.config_file = '/mnt/data/aim/liyaxuan/git_project2/configs/ours_final.yaml'
+args.output_dir = '/mnt/data/aim/liyaxuan/git_project2/neuron_org_embedding'
+cfg = setup(args)
+
+for dataset in all_dataset:
+    print('Processing:' + dataset)
+    run(root_dir + dataset + '/', cfg)
+    print(dataset + 'processed')
+
+
+
+
+
+
+
+
     

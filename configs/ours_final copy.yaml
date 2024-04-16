@@ -42,30 +42,32 @@ compute_precision:
         buffer_dtype: fp32
 dino:
   loss_weight: 1.0
-  head_n_prototypes: 65536
-  head_bottleneck_dim: 256
+  head_n_prototypes: 16384
+  head_bottleneck_dim: 128
   head_nlayers: 3
-  head_hidden_dim: 2048
+  head_hidden_dim: 512
   koleo_loss_weight: 0.1
+  crop_local: False
 ibot:
   loss_weight: 1.0
   mask_sample_probability: 0.5
   mask_ratio_min_max:
   - 0.1
   - 0.5
+  noise_replace_p: 0.1
   separate_head: false
-  head_n_prototypes: 65536
-  head_bottleneck_dim: 256
+  head_n_prototypes: 16384
+  head_bottleneck_dim: 128
   head_nlayers: 3
-  head_hidden_dim: 2048
+  head_hidden_dim: 512
 train:
-  batch_size_per_gpu: 64
+  batch_size_per_gpu: 9
   dataset_path: ImageNet:split=TRAIN
   output_dir: .
   saveckp_freq: 20
   seed: 0
   num_workers: 10
-  OFFICIAL_EPOCH_LENGTH: 1250
+  OFFICIAL_EPOCH_LENGTH: 1294
   cache_dataset: true
   centering: "centering" # or "sinkhorn_knopp"
 student:
@@ -76,7 +78,7 @@ student:
   drop_path_uniform: true
   pretrained_weights: ''
   ffn_layer: "mlp"
-  block_chunks: 0
+  block_chunks: 4
   qkv_bias: true
   proj_bias: true
   ffn_bias: true
@@ -85,14 +87,14 @@ teacher:
   final_momentum_teacher: 1
   warmup_teacher_temp: 0.04
   teacher_temp: 0.07
-  warmup_teacher_temp_epochs: 30
+  warmup_teacher_temp_epochs: 7
 optim:
-  epochs: 100
+  epochs: 30
   weight_decay: 0.04
   weight_decay_end: 0.4
-  base_lr: 0.004  # learning rate for a batch size of 1024
+  base_lr: 0.003  # 0.004 learning rate for a batch size of 1024, neuro_num 93,415
   lr: 0.  # will be set after applying scaling rule
-  warmup_epochs: 10
+  warmup_epochs: 2
   min_lr: 1.0e-06
   clip_grad: 3.0
   freeze_last_layer_epochs: 1
@@ -102,14 +104,21 @@ optim:
   adamw_beta1: 0.9
   adamw_beta2: 0.999
 crops:
-  global_crops_scale:
-  - 0.32
-  - 1.0
-  local_crops_number: 2
-  local_crops_scale:
-  - 0.05
-  - 0.32
-  global_crops_size: 224
-  local_crops_size: 96
+  local_crops_number: 4
+  global_crops_size: 1000
+  local_crops_size: 200
 evaluation:
-  eval_period_iterations: 12500
+  eval_period_iterations: 1294
+dataset:
+  path: "/mnt/data/aim/liyaxuan/pre_data/"
+  jitter_var: 1
+  translate_var: 10
+  rotation_axis: "y"
+  n_drop_branch: 10
+model:
+  dim: 128
+  depth: 7
+  n_head: 11
+  feat_dim: 11
+  pos_dim: 128
+  num_classes: 1000
