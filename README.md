@@ -1,6 +1,6 @@
-# MorphFM: Foundation Model for Neuron Morphology
+# MorphRep: Learning Meaningful Representation of Single-Neuron Morphology via Large-scale Pre-training
 
-This repository holds the Pytorch implementation for MorphFM described in the paper 
+This repository holds the Pytorch implementation for MorphRep described in the paper 
 
 # Preparation
 
@@ -27,12 +27,20 @@ Region), M1-EXC(Cell Type), M1-EXC(RNA family) and BBP. These datasets come from
 # Training
 
 ```
-/mnt/data/aim/liyaxuan/.conda/envs/treedino/bin/torchrun --nproc_per_node=8 morphFM/train/train.py \
---config-file morphFM/configs/ours_final.yaml \
+/mnt/data/aim/liyaxuan/.conda/envs/treedino/bin/torchrun --nproc_per_node=2 morphFM/train/train.py \
+--config-file configs/ours_final.yaml \
 --output-dir /mnt/data/aim/liyaxuan/projects/git_project2/ours_add_noise/ \
-train.dataset_path=NeuronMorpho:split=TRAIN:root=/mnt/data/aim/liyaxuan/projects/project2/pre_data:extra=/mnt/data/aim/liyaxuan/projects/project2/pre_data
+train.dataset_path=NeuronMorpho:split=TRAIN:root=/mnt/data/oss_beijing/liyaxuan/pre_data:extra=/mnt/data/oss_beijing/liyaxuan/pre_data
+
 ```
 
 # Test
-
+ - `pre_process.py`: Perform operations such as trimming redundant nodes and removing axons from neuron data
  - `KNN_classifier.py`: use unsupervised classification method ——KNN
+
+'''
+
+python pre_process.py
+python KNN_classifier.py
+
+'''
