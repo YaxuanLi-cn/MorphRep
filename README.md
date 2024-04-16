@@ -38,9 +38,9 @@ train.dataset_path=NeuronMorpho:split=TRAIN:root=/mnt/data/oss_beijing/liyaxuan/
  - `pre_process.py`: Perform operations such as trimming redundant nodes and removing axons from neuron data
  - `KNN_classifier.py`: use unsupervised classification method ——KNN
 
-'''
+```
 
 python pre_process.py
 python KNN_classifier.py
 
-'''
+```
